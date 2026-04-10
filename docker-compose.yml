@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: comfyui-server:latest
+    container_name: comfyui-server
+    restart: unless-stopped
+    ports:
+      - "8188:8188"
+    volumes:
+      - ${COMFYUI_MODELS:-./models}:/app/models
+      - ${COMFYUI_INPUT:-./input}:/app/input
+      - ${COMFYUI_OUTPUT:-./output}:/app/output
+      - ${COMFYUI_CUSTOM_NODES:-./custom_nodes}:/app/custom_nodes
+      - ${COMFYUI_USER:-./user}:/app/user
+      - ${COMFYUI_APP:-./app}:/app/app
+      - ${COMFYUI_WEB:-./web}:/app/web
+      - ${COMFYUI_SERVER:-./server.py}:/app/server.py
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: >
+      python main.py
+      --listen 0.0.0.0
+      --port 8188
+      --enable-cors-header
+
+networks:
+  default:
+    name: comfyui-network

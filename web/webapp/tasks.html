@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务监控 - WebApp管理</title>
+    <link rel="stylesheet" href="/webapp/index.html" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .user-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .user-selector label {
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+        
+        .user-selector input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 6px 12px;
+            color: #fff;
+            font-size: 14px;
+            width: 120px;
+        }
+        
+        .user-selector input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #a0a0a0;
+            margin-top: 4px;
+        }
+
+        .stat-card.pending .value { color: #ff9800; }
+        .stat-card.running .value { color: #2196f3; }
+        .stat-card.completed .value { color: #4caf50; }
+        .stat-card.failed .value { color: #f44336; }
+        .stat-card.cancelled .value { color: #9e9e9e; }
+
+        .task-list {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .task-item {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .task-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .task-checkbox {
+            margin-top: 4px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: none;
+        }
+
+        .manage-mode .task-checkbox {
+            display: block;
+        }
+
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .task-item.highlight {
+            background: rgba(102, 126, 234, 0.2);
+            animation: highlight-fade 3s ease-out forwards;
+        }
+
+        @keyframes highlight-fade {
+            0% { background: rgba(102, 126, 234, 0.3); }
+            100% { background: rgba(255, 255, 255, 0.02); }
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .task-id {
+            font-size: 12px;
+            color: #808080;
+            font-family: monospace;
+        }
+
+        .task-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+
+        .status-running {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196f3;
+        }
+
+        .status-completed {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .status-failed {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .status-cancelled {
+            background: rgba(158, 158, 158, 0.2);
+            color: #9e9e9e;
+        }
+
+        .task-error {
+            margin: 12px 0;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .error-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            cursor: pointer;
+            background: rgba(244, 67, 54, 0.1);
+            font-size: 13px;
+            font-weight: 500;
+            color: #f44336;
+        }
+
+        .error-header:hover {
+            background: rgba(244, 67, 54, 0.2);
+        }
+
+        .error-toggle {
+            font-size: 10px;
+            transition: transform 0.3s;
+        }
+
+        .error-content {
+            padding: 12px 14px;
+            display: none;
+        }
+
+        .error-content.show {
+            display: block;
+        }
+
+        .error-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #ff8a80;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 24px;
+            font-size: 13px;
+            color: #a0a0a0;
+            margin-bottom: 12px;
+        }
+
+        .task-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .task-outputs {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .task-outputs h4 {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 12px;
+        }
+
+        .output-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .output-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .output-item img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .output-item img:hover {
+            transform: scale(1.05);
+        }
+
+        .output-item .download-btn {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #fff;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .output-item:hover .download-btn {
+            opacity: 1;
+        }
+
+        .task-params {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .task-params h4 {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .task-params h4:hover {
+            color: #fff;
+        }
+
+        .params-content {
+            display: none;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .params-content.show {
+            display: block;
+        }
+
+        .param-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .param-item:last-child {
+            border-bottom: none;
+        }
+
+        .param-name {
+            color: #a0a0a0;
+        }
+
+        .param-value {
+            color: #fff;
+            font-family: monospace;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: #1e1e2e;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: auto;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #a0a0a0;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #808080;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            background: #333;
+            color: #fff;
+            font-size: 14px;
+            z-index: 2000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: #4caf50;
+        }
+
+        .toast.error {
+            background: #f44336;
+        }
+
+        .toast.info {
+            background: #2196f3;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .task-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .task-actions {
+                width: 100%;
+            }
+
+            .task-actions .btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 任务监控</h1>
+            <div class="header-actions">
+                <div class="user-selector">
+                    <label>用户 ID:</label>
+                    <input type="text" id="user-id-input" value="default" onchange="changeUser()">
+                </div>
+                <a href="/webapp/index.html" class="btn btn-secondary">返回应用列表</a>
+                <button class="btn btn-primary" onclick="refreshTasks()">刷新</button>
+            </div>
+        </div>
+
+        <div class="stats-bar" id="stats-bar">
+            <div class="stat-card pending">
+                <div class="value" id="stat-pending">0</div>
+                <div class="label">待处理</div>
+            </div>
+            <div class="stat-card running">
+                <div class="value" id="stat-running">0</div>
+                <div class="label">运行中</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="value" id="stat-completed">0</div>
+                <div class="label">已完成</div>
+            </div>
+            <div class="stat-card failed">
+                <div class="value" id="stat-failed">0</div>
+                <div class="label">失败</div>
+            </div>
+            <div class="stat-card cancelled">
+                <div class="value" id="stat-cancelled">0</div>
+                <div class="label">已取消</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>状态:</label>
+                <select id="filter-status" onchange="applyFilters()">
+                    <option value="">全部</option>
+                    <option value="pending">待处理</option>
+                    <option value="running">运行中</option>
+                    <option value="completed">已完成</option>
+                    <option value="failed">失败</option>
+                    <option value="cancelled">已取消</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>应用:</label>
+                <select id="filter-webapp" onchange="applyFilters()">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>搜索:</label>
+                <input type="text" id="filter-search" placeholder="任务 ID 或应用名称" oninput="applyFilters()">
+            </div>
+            <div class="manage-bar" id="manage-bar" style="display: none; background: rgba(255, 255, 255, 0.05); border-radius: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" onclick="toggleManageMode()" id="manage-btn">管理</button>
+                <button class="btn btn-danger" onclick="batchDelete()" id="batch-delete-btn" style="display: none;">批量删除</button>
+                <button class="btn btn-success" onclick="batchDownload()" id="batch-download-btn" style="display: none;">批量下载</button>
+                <button class="btn btn-secondary" onclick="selectAllTasks()" id="select-all-btn" style="display: none;">全选</button>
+                <span id="selected-count" style="color: #808080; font-size: 14px; display: none;">已选择 0 个任务</span>
+            </div>
+        </div>
+
+
+
+        <div class="task-list" id="task-list">
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>暂无任务</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="retry-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>重新提交任务</h2>
+                <button class="modal-close" onclick="closeRetryModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="retry-modal-body">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRetryModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitRetry()">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="image-modal" class="modal-overlay" onclick="closeImageModal()">
+        <img id="image-modal-img" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let tasks = [];
+        let webapps = [];
+        let currentRetryTask = null;
+        let retryParams = {};
+        let initialHighlightTaskId = null;
+        let manageMode = false;
+        let selectedTasks = new Set();
+        
+        function getUserId() {
+            return document.getElementById('user-id-input').value || 'default';
+        }
+        
+        function changeUser() {
+            loadWebApps();
+            loadTasks();
+        }
+        
+        function getAuthHeaders() {
+            return {
+                'X-User-ID': getUserId()
+            };
+        }
+
+        async function loadWebApps() {
+            try {
+                const response = await fetch('/api/webapp/list', {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                if (result.code === 0) {
+                    webapps = result.data;
+                    updateWebAppFilter();
+                }
+            } catch (error) {
+                console.error('Error loading webapps:', error);
+            }
+        }
+
+        function updateWebAppFilter() {
+            const select = document.getElementById('filter-webapp');
+            const currentValue = select.value;
+            
+            select.innerHTML = '<option value="">全部</option>';
+            webapps.forEach(webapp => {
+                const option = document.createElement('option');
+                option.value = webapp.id;
+                option.textContent = webapp.name;
+                select.appendChild(option);
+            });
+            
+            select.value = currentValue;
+        }
+
+        async function loadTasks() {
+            try {
+                const status = document.getElementById('filter-status').value;
+                const webappId = document.getElementById('filter-webapp').value;
+                
+                let url = '/api/webapp/tasks?limit=100';
+                if (status) url += `&status=${status}`;
+                if (webappId) url += `&webapp_id=${webappId}`;
+                
+                const response = await fetch(url, {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    tasks = result.data;
+                    updateStats();
+                    renderTasks();
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                showToast('加载任务失败', 'error');
+            }
+        }
+
+        function updateStats() {
+            const stats = {
+                pending: 0,
+                running: 0,
+                completed: 0,
+                failed: 0,
+                cancelled: 0
+            };
+            
+            tasks.forEach(task => {
+                if (stats.hasOwnProperty(task.status)) {
+                    stats[task.status]++;
+                }
+            });
+            
+            document.getElementById('stat-pending').textContent = stats.pending;
+            document.getElementById('stat-running').textContent = stats.running;
+            document.getElementById('stat-completed').textContent = stats.completed;
+            document.getElementById('stat-failed').textContent = stats.failed;
+            document.getElementById('stat-cancelled').textContent = stats.cancelled;
+        }
+
+        function applyFilters() {
+            loadTasks();
+            if (manageMode) {
+                updateSelectedCount();
+            }
+        }
+
+        function refreshTasks() {
+            loadTasks();
+            showToast('已刷新', 'info');
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('task-list');
+            const searchTerm = document.getElementById('filter-search').value.toLowerCase();
+            
+            let filteredTasks = tasks;
+            if (searchTerm) {
+                filteredTasks = tasks.filter(task => 
+                    task.taskId.toLowerCase().includes(searchTerm) ||
+                    task.webappName.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (filteredTasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>暂无任务</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filteredTasks.map(task => renderTaskItem(task)).join('');
+            
+            if (initialHighlightTaskId) {
+                const taskElement = document.getElementById(`task-item-${initialHighlightTaskId}`);
+                if (taskElement) {
+                    taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    taskElement.classList.add('highlight');
+                    setTimeout(() => taskElement.classList.remove('highlight'), 3000);
+                }
+                initialHighlightTaskId = null;
+                if (window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+        }
+
+        function renderTaskItem(task) {
+            const statusClass = `status-${task.status}`;
+            const statusText = {
+                pending: '待处理',
+                running: '运行中',
+                completed: '已完成',
+                failed: '失败',
+                cancelled: '已取消'
+            }[task.status] || task.status;
+            
+            const createdAt = task.created_at ? new Date(task.created_at).toLocaleString() : '-';
+            const duration = calculateDuration(task);
+            
+            let actionsHtml = '';
+            
+            if (task.status === 'pending' || task.status === 'running') {
+                actionsHtml += `<button class="btn btn-warning btn-sm" onclick="cancelTask('${task.taskId}')">取消</button>`;
+            }
+            
+            if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
+                actionsHtml += `<button class="btn btn-primary btn-sm" onclick="openRetryModal('${task.taskId}')">重新运行</button>`;
+            }
+            
+            if (task.status === 'completed' && task.outputFiles && task.outputFiles.length > 0) {
+                actionsHtml += `<button class="btn btn-success btn-sm" onclick="downloadAll('${task.taskId}')">下载全部</button>`;
+            }
+            
+            actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.taskId}')">删除</button>`;
+            
+            let outputsHtml = '';
+            if (task.status === 'completed' && task.outputFiles && task.outputFiles.length > 0) {
+                outputsHtml = `
+                    <div class="task-outputs">
+                        <h4>输出结果 (${task.outputFiles.length} 个文件)</h4>
+                        <div class="output-grid">
+                            ${task.outputFiles.map(file => `
+                                <div class="output-item">
+                                    <img src="${file.url}" onclick="showImage('${file.url}')" alt="${file.savedFilename}">
+                                    <div class="download-btn" onclick="downloadFile('${task.taskId}', '${file.savedFilename}')">下载</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let paramsHtml = '';
+            if (task.nodeInfoList && task.nodeInfoList.length > 0) {
+                paramsHtml = `
+                    <div class="task-params">
+                        <h4 onclick="toggleParams('${task.taskId}')">
+                            <span>▼</span> 运行参数 (${task.nodeInfoList.length} 项)
+                        </h4>
+                        <div class="params-content" id="params-${task.taskId}">
+                            ${task.nodeInfoList.map(param => `
+                                <div class="param-item">
+                                    <span class="param-name">${param.displayName || param.fieldName} [${param.nodeId}]</span>
+                                    <span class="param-value" title="${param.fieldValue}">${param.fieldValue}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const progress = task.status === 'completed' ? 100 : (task.status === 'running' ? 50 : 0);
+            
+            const checkboxHtml = manageMode ? `
+                <input type="checkbox" class="task-checkbox" 
+                    ${selectedTasks.has(task.taskId) ? 'checked' : ''} 
+                    onchange="toggleTaskSelection('${task.taskId}')">
+            ` : '';
+            
+            return `
+                <div class="task-item ${manageMode ? 'manage-mode' : ''}" id="task-item-${task.taskId}">
+                    ${checkboxHtml}
+                    <div class="task-content">
+                    <div class="task-header">
+                        <div class="task-info">
+                            <div class="task-name">${task.webappName || '未知应用'}</div>
+                            <div class="task-id">${task.taskId}</div>
+                        </div>
+                        <span class="task-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="task-meta">
+                        <div class="task-meta-item">
+                            <span>📅</span>
+                            <span>${createdAt}</span>
+                        </div>
+                        <div class="task-meta-item">
+                            <span>⏱️</span>
+                            <span>${duration}</span>
+                        </div>
+                        ${task.retryCount > 0 ? `
+                        <div class="task-meta-item">
+                            <span>🔄</span>
+                            <span>重试 ${task.retryCount} 次</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    ${task.error ? `
+                    <div class="task-error">
+                        <div class="error-header" onclick="toggleError('${task.taskId}')">
+                            <span>❌ 错误信息</span>
+                            <span class="error-toggle">▼</span>
+                        </div>
+                        <div class="error-content" id="error-${task.taskId}">
+                            <pre>${task.error}</pre>
+                        </div>
+                    </div>
+                    ` : ''}
+                    <div class="task-actions">
+                        ${actionsHtml}
+                    </div>
+                    ${outputsHtml}
+                    ${paramsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateDuration(task) {
+            if (task.status === 'pending') {
+                return '等待中';
+            }
+            
+            if (!task.started_at) return '-';
+            
+            const start = new Date(task.started_at);
+            const end = task.completed_at ? new Date(task.completed_at) : new Date();
+            const diff = Math.floor((end - start) / 1000);
+            
+            if (diff < 0) return '0秒';
+            if (diff < 60) return `${diff}秒`;
+            if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`;
+            return `${Math.floor(diff / 3600)}时${Math.floor((diff % 3600) / 60)}分`;
+        }
+
+        function toggleManageMode() {
+            manageMode = !manageMode;
+            selectedTasks.clear();
+            
+            const manageBar = document.getElementById('manage-bar');
+            const manageBtn = document.getElementById('manage-btn');
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const batchDownloadBtn = document.getElementById('batch-download-btn');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const selectedCount = document.getElementById('selected-count');
+            
+            manageBar.style.display = 'flex';
+            
+            if (manageMode) {
+                manageBtn.textContent = '取消管理';
+                manageBtn.classList.remove('btn-secondary');
+                manageBtn.classList.add('btn-warning');
+                batchDeleteBtn.style.display = 'inline-block';
+                batchDownloadBtn.style.display = 'inline-block';
+                selectAllBtn.style.display = 'inline-block';
+                selectedCount.style.display = 'inline';
+                updateSelectedCount();
+            } else {
+                manageBtn.textContent = '管理';
+                manageBtn.classList.remove('btn-warning');
+                manageBtn.classList.add('btn-secondary');
+                batchDeleteBtn.style.display = 'none';
+                batchDownloadBtn.style.display = 'none';
+                selectAllBtn.style.display = 'none';
+                selectedCount.style.display = 'none';
+            }
+            
+            renderTasks();
+        }
+
+        function updateSelectedCount() {
+            const count = selectedTasks.size;
+            const selectedCount = document.getElementById('selected-count');
+            if (selectedCount) {
+                selectedCount.textContent = `已选择 ${count} 个任务`;
+            }
+        }
+
+        function selectAllTasks() {
+            const filteredTasks = getFilteredTasks();
+            if (manageMode) {
+                const allSelected = filteredTasks.every(task => selectedTasks.has(task.taskId));
+                if (allSelected) {
+                    filteredTasks.forEach(task => selectedTasks.delete(task.taskId));
+                } else {
+                    filteredTasks.forEach(task => selectedTasks.add(task.taskId));
+                }
+                updateSelectedCount();
+                renderTasks();
+            }
+        }
+
+        function getFilteredTasks() {
+            const statusFilter = document.getElementById('filter-status').value;
+            const webappFilter = document.getElementById('filter-webapp').value;
+            const searchTerm = document.getElementById('filter-search').value.toLowerCase();
+            
+            return tasks.filter(task => {
+                if (statusFilter && task.status !== statusFilter) return false;
+                if (webappFilter && task.webappId !== webappFilter) return false;
+                if (searchTerm && !task.taskId.toLowerCase().includes(searchTerm) && 
+                    !task.webappName.toLowerCase().includes(searchTerm)) return false;
+                return true;
+            });
+        }
+
+        function toggleTaskSelection(taskId) {
+            if (selectedTasks.has(taskId)) {
+                selectedTasks.delete(taskId);
+            } else {
+                selectedTasks.add(taskId);
+            }
+            updateSelectedCount();
+        }
+
+        function getSelectedTasksList() {
+            return tasks.filter(task => selectedTasks.has(task.taskId));
+        }
+
+        async function batchDelete() {
+            const selected = getSelectedTasksList();
+            if (selected.length === 0) {
+                showToast('请先选择要删除的任务', 'warning');
+                return;
+            }
+            
+            if (!confirm(`确定要删除选中的 ${selected.length} 个任务吗？相关的输出文件也会被删除。`)) {
+                return;
+            }
+            
+            let successCount = 0;
+            for (const task of selected) {
+                try {
+                    const response = await fetch(`/api/webapp/task/${task.taskId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        successCount++;
+                    }
+                } catch (error) {
+                    console.error(`Failed to delete task ${task.taskId}:`, error);
+                }
+            }
+            
+            showToast(`已删除 ${successCount}/${selected.length} 个任务`, successCount === selected.length ? 'success' : 'warning');
+            selectedTasks.clear();
+            toggleManageMode();
+            loadTasks();
+        }
+
+        async function batchDownload() {
+            const selected = getSelectedTasksList();
+            if (selected.length === 0) {
+                showToast('请先选择要下载的任务', 'warning');
+                return;
+            }
+            
+            const completedTasks = selected.filter(task => task.status === 'completed' && task.outputFiles && task.outputFiles.length > 0);
+            
+            if (completedTasks.length === 0) {
+                showToast('选中的任务中没有已完成的或有输出文件的任务', 'warning');
+                return;
+            }
+            
+            for (const task of completedTasks) {
+                if (task.outputFiles && task.outputFiles.length > 0) {
+                    for (const file of task.outputFiles) {
+                        downloadFile(task.taskId, file.savedFilename);
+                    }
+                }
+            }
+            
+            showToast(`开始下载 ${completedTasks.length} 个任务的输出文件`, 'success');
+        }
+
+        function toggleParams(taskId) {
+            const content = document.getElementById(`params-${taskId}`);
+            content.classList.toggle('show');
+        }
+
+        function toggleError(taskId) {
+            const content = document.getElementById(`error-${taskId}`);
+            content.classList.toggle('show');
+        }
+
+        async function cancelTask(taskId) {
+            if (!confirm('确定要取消此任务吗？')) return;
+            
+            try {
+                const response = await fetch(`/api/webapp/task/${taskId}/cancel`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    showToast('任务已取消', 'success');
+                    loadTasks();
+                } else {
+                    showToast('取消失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('取消失败', 'error');
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!confirm('确定要删除此任务吗？相关的输出文件也会被删除。')) return;
+            
+            try {
+                const response = await fetch(`/api/webapp/task/${taskId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    showToast('任务已删除', 'success');
+                    loadTasks();
+                } else {
+                    showToast('删除失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        async function openRetryModal(taskId) {
+            const task = tasks.find(t => t.taskId === taskId);
+            if (!task) return;
+            
+            currentRetryTask = task;
+            retryParams = {};
+            
+            await restoreTaskFiles(task);
+            
+            const inputFiles = await fetchInputFiles();
+            
+            const body = document.getElementById('retry-modal-body');
+            body.innerHTML = `
+                <p style="margin-bottom: 16px; color: #a0a0a0;">可以修改参数后重新提交任务</p>
+                ${task.nodeInfoList.map((param, index) => {
+                    if (param.fieldType === 'LIST' && param.fieldData && inputFiles.length > 0) {
+                        param.fieldData = inputFiles;
+                    }
+                    return `
+                    <div class="form-group">
+                        <label>${param.displayName || param.fieldName} [${param.nodeId}]</label>
+                        ${renderParamInput(param, index)}
+                    </div>
+                `}).join('')}
+            `;
+            
+            document.getElementById('retry-modal').classList.add('active');
+        }
+        
+        async function fetchInputFiles() {
+            try {
+                const response = await fetch('/api/webapp/input-files', {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                if (result.code === 0) {
+                    return result.data;
+                }
+            } catch (error) {
+                console.error('Error fetching input files:', error);
+            }
+            return [];
+        }
+        
+        async function restoreTaskFiles(task) {
+            for (const param of task.nodeInfoList) {
+                if (param.fileContent) {
+                    try {
+                        const response = await fetch('/api/webapp/restore-file', {
+                            method: 'POST',
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                fileContent: param.fileContent,
+                                originalFilename: param.originalFilename || param.fieldValue
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        if (result.code === 0) {
+                            console.log(`File restored: ${result.data.filename}`);
+                        }
+                    } catch (error) {
+                        console.error('Error restoring file:', error);
+                    }
+                }
+            }
+        }
+
+        function renderParamInput(param, index) {
+            const inputId = `retry-param-${index}`;
+            
+            switch (param.fieldType) {
+                case 'IMAGE':
+                    return `
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" class="form-control" id="${inputId}" value="${param.fieldValue || ''}" 
+                                onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: this.value }">
+                            <input type="file" id="file-${inputId}" accept="image/*" style="display: none;" 
+                                onchange="handleRetryImageUpload(this, '${inputId}', ${index})">
+                            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-${inputId}').click()">上传新图片</button>
+                        </div>
+                        ${param.fileContent ? `<small style="color: #808080; margin-top: 4px; display: block;">已保存图片: ${param.originalFilename || param.fieldValue}</small>` : ''}
+                    `;
+                case 'INT':
+                    return `<input type="number" class="form-control" id="${inputId}" value="${param.fieldValue || 0}" 
+                        onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: parseInt(this.value) }">`;
+                case 'FLOAT':
+                    return `<input type="number" step="0.01" class="form-control" id="${inputId}" value="${param.fieldValue || 0}" 
+                        onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: parseFloat(this.value) }">`;
+                case 'BOOLEAN':
+                    return `
+                        <select class="form-control" onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: this.value === 'true' }">
+                            <option value="true" ${param.fieldValue === true ? 'selected' : ''}>True</option>
+                            <option value="false" ${param.fieldValue === false ? 'selected' : ''}>False</option>
+                        </select>
+                    `;
+                case 'LIST':
+                    if (param.fieldData) {
+                        const selectId = `retry-select-${index}`;
+                        const isImageList = param.fieldName.toLowerCase().includes('image') || 
+                            (param.fieldData.length > 0 && param.fieldData.some(f => /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(f)));
+                        
+                        if (isImageList) {
+                            return `
+                                <div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <select class="form-control" id="${selectId}" onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: this.value }" style="flex: 1;">
+                                            ${param.fieldData.length > 0 ? param.fieldData.map(opt => `
+                                                <option value="${opt}" ${param.fieldValue === opt ? 'selected' : ''}>${opt}</option>
+                                            `).join('') : '<option value="">暂无图片文件</option>'}
+                                        </select>
+                                        <input type="file" id="file-${index}" accept="image/*" style="display: none;" 
+                                            onchange="handleRetryImageUpload(this, '${selectId}', ${index})">
+                                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-${index}').click()">上传</button>
+                                    </div>
+                                    ${param.fileContent ? `<small style="color: #808080; margin-top: 4px; display: block;">已保存图片: ${param.originalFilename || param.fieldValue}</small>` : ''}
+                                </div>
+                            `;
+                        }
+                        
+                        return `
+                            <select class="form-control" onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: this.value }">
+                                ${param.fieldData.map(opt => `
+                                    <option value="${opt}" ${param.fieldValue === opt ? 'selected' : ''}>${opt}</option>
+                                `).join('')}
+                            </select>
+                        `;
+                    }
+                    return `<input type="text" class="form-control" id="${inputId}" value="${param.fieldValue || ''}" 
+                        onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: this.value }">`;
+                default:
+                    return `<input type="text" class="form-control" id="${inputId}" value="${param.fieldValue || ''}" 
+                        onchange="retryParams[${index}] = { ...currentRetryTask.nodeInfoList[${index}], fieldValue: this.value }">`;
+            }
+        }
+        
+        async function handleRetryImageUpload(fileInput, inputId, index) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileType', 'input');
+            
+            try {
+                const response = await fetch('/api/webapp/upload-temp', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                        const inputElement = document.getElementById(inputId);
+                        if (inputElement) {
+                            if (inputElement.tagName === 'SELECT') {
+                                const option = document.createElement('option');
+                                option.value = result.data.filename;
+                                option.textContent = result.data.filename + ' (新上传)';
+                                inputElement.insertBefore(option, inputElement.firstChild);
+                                inputElement.value = result.data.filename;
+                            } else {
+                                inputElement.value = result.data.filename;
+                            }
+                        }
+                        
+                        retryParams[index] = {
+                            ...currentRetryTask.nodeInfoList[index],
+                            fieldValue: result.data.filename,
+                            fileContent: result.data.fileContent,
+                            originalFilename: result.data.originalFilename
+                        };
+                        
+                        showToast('图片上传成功', 'success');
+                    } else {
+                        showToast('上传失败: ' + result.msg, 'error');
+                    }
+            } catch (error) {
+                showToast('上传失败: ' + error.message, 'error');
+            }
+            
+            fileInput.value = '';
+        }
+
+        function closeRetryModal() {
+            document.getElementById('retry-modal').classList.remove('active');
+            currentRetryTask = null;
+            retryParams = {};
+        }
+
+        async function submitRetry() {
+            if (!currentRetryTask) return;
+            
+            const finalParams = currentRetryTask.nodeInfoList.map((param, index) => {
+                if (retryParams[index]) {
+                    return retryParams[index];
+                }
+                return param;
+            });
+            
+            try {
+                const response = await fetch(`/api/webapp/task/${currentRetryTask.taskId}/retry`, {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeInfoList: finalParams })
+                });
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    showToast('任务已重新提交', 'success');
+                    closeRetryModal();
+                    loadTasks();
+                } else {
+                    showToast('提交失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('提交失败', 'error');
+            }
+        }
+
+        function downloadFile(taskId, filename) {
+            const userId = getUserId();
+            const url = `/api/webapp/task/${taskId}/download/${filename}?user_id=${userId}`;
+            window.open(url, '_blank');
+        }
+
+        function downloadAll(taskId) {
+            window.open(`/api/webapp/task/${taskId}/download-all`, '_blank');
+        }
+
+        function showImage(url) {
+            document.getElementById('image-modal-img').src = url;
+            document.getElementById('image-modal').classList.add('active');
+        }
+
+        function closeImageModal() {
+            document.getElementById('image-modal').classList.remove('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            initialHighlightTaskId = urlParams.get('taskId');
+            
+            loadWebApps();
+            loadTasks();
+            
+            setInterval(() => {
+                const runningCount = tasks.filter(t => t.status === 'running' || t.status === 'pending').length;
+                if (runningCount > 0) {
+                    loadTasks();
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebApp 发布管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .user-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .user-selector label {
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+        
+        .user-selector input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 6px 12px;
+            color: #fff;
+            font-size: 14px;
+            width: 120px;
+        }
+        
+        .user-selector input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            border-radius: 8px;
+            color: #a0a0a0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: rgba(102, 126, 234, 0.3);
+            color: #fff;
+        }
+        
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .webapp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .webapp-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .webapp-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .webapp-cover {
+            height: 160px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .webapp-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .webapp-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-draft {
+            background: rgba(255, 193, 7, 0.9);
+            color: #000;
+        }
+        
+        .status-published {
+            background: rgba(76, 175, 80, 0.9);
+            color: #fff;
+        }
+        
+        .webapp-content {
+            padding: 20px;
+        }
+        
+        .webapp-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        
+        .webapp-description {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
+        .webapp-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #808080;
+            margin-bottom: 16px;
+        }
+        
+        .webapp-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .webapp-actions .btn {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: #1e1e2e;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #a0a0a0;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            padding: 24px;
+            max-height: calc(90vh - 140px);
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .available-nodes {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .available-node-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .available-node-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .node-info {
+            flex: 1;
+        }
+        
+        .node-info-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .node-info-meta {
+            font-size: 12px;
+            color: #808080;
+        }
+        
+        .selected-nodes {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .selected-node-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        
+        .selected-node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(102, 126, 234, 0.1);
+            cursor: pointer;
+        }
+        
+        .selected-node-title {
+            font-weight: 500;
+        }
+        
+        .selected-node-body {
+            padding: 16px;
+            display: none;
+        }
+        
+        .selected-node-body.expanded {
+            display: block;
+        }
+        
+        .field-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        
+        .field-row label {
+            font-size: 13px;
+            color: #a0a0a0;
+        }
+        
+        .workflow-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .workflow-upload:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .workflow-upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .workflow-upload-text {
+            color: #a0a0a0;
+        }
+        
+        .workflow-upload input {
+            display: none;
+        }
+        
+        .tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            min-height: 44px;
+        }
+        
+        .tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            font-size: 13px;
+        }
+        
+        .tag-remove {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+        }
+        
+        .tag-input {
+            flex: 1;
+            min-width: 100px;
+            background: none;
+            border: none;
+            color: #e0e0e0;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .run-mode-selector {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .run-mode-option {
+            flex: 1;
+            min-width: 120px;
+            padding: 16px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .run-mode-option:hover {
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+        
+        .run-mode-option.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .run-mode-title {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        
+        .run-mode-desc {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #808080;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: #1e1e2e;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            border-left: 4px solid #4caf50;
+        }
+        
+        .toast.error {
+            border-left: 4px solid #f44336;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        
+        .badge-type {
+            background: rgba(102, 126, 234, 0.3);
+            color: #a0a0ff;
+        }
+        
+        .search-box {
+            margin-bottom: 12px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WebApp 发布管理</h1>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div class="user-selector">
+                    <label>用户 ID:</label>
+                    <input type="text" id="user-id-input" value="default" onchange="changeUser()">
+                </div>
+                <a href="/webapp/tasks.html" class="btn btn-secondary">📋 任务监控</a>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ 创建 WebApp</button>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-status="" onclick="filterByStatus('')">全部</button>
+            <button class="tab" data-status="draft" onclick="filterByStatus('draft')">草稿</button>
+            <button class="tab" data-status="published" onclick="filterByStatus('published')">已发布</button>
+        </div>
+        
+        <div id="webapp-grid" class="webapp-grid">
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="create-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>创建 WebApp</h2>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>应用名称 *</label>
+                    <input type="text" id="webapp-name" class="form-control" placeholder="起一个容易理解的应用名">
+                </div>
+                
+                <div class="form-group">
+                    <label>应用介绍</label>
+                    <textarea id="webapp-description" class="form-control" placeholder="描述应用的功能和使用方法"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>上传工作流 *</label>
+                    <div class="workflow-upload" onclick="document.getElementById('workflow-file').click()">
+                        <div class="workflow-upload-icon">📁</div>
+                        <div class="workflow-upload-text">
+                            点击上传 ComfyUI 工作流 JSON 文件<br>
+                            或从剪贴板粘贴工作流
+                        </div>
+                        <input type="file" id="workflow-file" accept=".json" onchange="handleWorkflowUpload(event)">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>标签</label>
+                    <div class="tags-input" id="tags-input">
+                        <input type="text" class="tag-input" placeholder="输入标签后按回车" onkeydown="handleTagInput(event)">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>运行模式</label>
+                    <div class="run-mode-selector">
+                        <div class="run-mode-option active" data-mode="8g" onclick="selectRunMode('8g')">
+                            <div class="run-mode-title">8G</div>
+                            <div class="run-mode-desc">8GB 显存</div>
+                        </div>
+                        <div class="run-mode-option" data-mode="16g" onclick="selectRunMode('16g')">
+                            <div class="run-mode-title">16G</div>
+                            <div class="run-mode-desc">16GB 显存</div>
+                        </div>
+                        <div class="run-mode-option" data-mode="24g" onclick="selectRunMode('24g')">
+                            <div class="run-mode-title">24G</div>
+                            <div class="run-mode-desc">24GB 显存</div>
+                        </div>
+                        <div class="run-mode-option" data-mode="32g" onclick="selectRunMode('32g')">
+                            <div class="run-mode-title">32G</div>
+                            <div class="run-mode-desc">32GB 显存</div>
+                        </div>
+                        <div class="run-mode-option" data-mode="48g" onclick="selectRunMode('48g')">
+                            <div class="run-mode-title">48G</div>
+                            <div class="run-mode-desc">48GB 显存</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+                <button class="btn btn-primary" onclick="createWebApp()">创建并配置节点</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>配置 WebApp 节点</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>应用名称</label>
+                    <input type="text" id="edit-webapp-name" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>应用介绍</label>
+                    <textarea id="edit-webapp-description" class="form-control"></textarea>
+                </div>
+                
+                <div class="two-columns">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">可选节点</span>
+                            <span id="available-count" style="color: #808080; font-size: 12px;">0 个节点</span>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" id="node-search" placeholder="搜索节点..." oninput="filterAvailableNodes()">
+                        </div>
+                        <div id="available-nodes" class="available-nodes"></div>
+                    </div>
+                    
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">已选节点</span>
+                            <span id="selected-count" style="color: #808080; font-size: 12px;">0 个节点</span>
+                        </div>
+                        <div id="selected-nodes" class="selected-nodes"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>标签</label>
+                    <div class="tags-input" id="edit-tags-input">
+                        <input type="text" class="tag-input" placeholder="输入标签后按回车" onkeydown="handleEditTagInput(event)">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+                <button class="btn btn-success" onclick="publishWebApp()">发布</button>
+                <button class="btn btn-primary" onclick="saveWebApp()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="run-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>运行 WebApp</h2>
+                <button class="modal-close" onclick="closeRunModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="run-webapp-info" style="margin-bottom: 20px;">
+                    <h3 id="run-webapp-name" style="margin-bottom: 8px;"></h3>
+                    <p id="run-webapp-description" style="color: #a0a0a0;"></p>
+                </div>
+                <div id="run-params-container"></div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="btn btn-secondary" onclick="closeRunModal()">取消</button>
+                <button class="btn btn-success" onclick="executeWebApp()">执行</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="result-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>执行结果</h2>
+                <button class="modal-close" onclick="closeResultModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="result-status" style="margin-bottom: 20px;"></div>
+                <div id="result-outputs"></div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="btn btn-secondary" onclick="closeResultModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+    
+    <script>
+        let webapps = [];
+        let currentFilter = '';
+        let currentWebApp = null;
+        let tags = [];
+        let editTags = [];
+        let availableNodes = [];
+        let selectedNodes = [];
+        
+        function getUserId() {
+            return document.getElementById('user-id-input').value || 'default';
+        }
+        
+        function changeUser() {
+            loadWebApps();
+        }
+        
+        function getAuthHeaders() {
+            return {
+                'X-User-ID': getUserId()
+            };
+        }
+        
+        async function loadWebApps() {
+            try {
+                const response = await fetch('/api/webapp/list', {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                if (result.code === 0) {
+                    webapps = result.data;
+                    renderWebApps();
+                }
+            } catch (error) {
+                showToast('加载失败: ' + error.message, 'error');
+            }
+        }
+        
+        function renderWebApps() {
+            const grid = document.getElementById('webapp-grid');
+            const filtered = currentFilter 
+                ? webapps.filter(w => w.status === currentFilter)
+                : webapps;
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>暂无 WebApp</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            grid.innerHTML = filtered.map(webapp => `
+                <div class="webapp-card">
+                    <div class="webapp-cover">
+                        ${webapp.cover_image 
+                            ? `<img src="${webapp.cover_image}" alt="${webapp.name}">`
+                            : `<span style="font-size: 48px;">🎨</span>`
+                        }
+                        <span class="webapp-status status-${webapp.status}">
+                            ${webapp.status === 'draft' ? '草稿' : '已发布'}
+                        </span>
+                    </div>
+                    <div class="webapp-content">
+                        <h3 class="webapp-title">${webapp.name}</h3>
+                        <p class="webapp-id" style="font-size: 12px; color: #808080; font-family: monospace; margin: 4px 0 8px 0;">ID: ${webapp.id}</p>
+                        <p class="webapp-description">${webapp.description || '暂无描述'}</p>
+                        <div class="webapp-meta">
+                            <span>节点：${webapp.nodeInfoList?.length || 0}</span>
+                            <span>更新：${new Date(webapp.updated_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="webapp-actions">
+                            ${webapp.status === 'published' ? `<button class="btn btn-success" onclick="openRunModal('${webapp.id}')">运行</button>` : ''}
+                            <button class="btn btn-secondary" onclick="openEditModal('${webapp.id}')">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteWebApp('${webapp.id}')">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterByStatus(status) {
+            currentFilter = status;
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.status === status);
+            });
+            renderWebApps();
+        }
+        
+        function openCreateModal() {
+            tags = [];
+            renderTags();
+            window.currentWorkflow = null;
+            document.getElementById('create-modal').classList.add('active');
+        }
+        
+        function closeCreateModal() {
+            document.getElementById('create-modal').classList.remove('active');
+        }
+        
+        async function openEditModal(webappId) {
+            currentWebApp = webapps.find(w => w.id === webappId);
+            if (!currentWebApp) return;
+            
+            document.getElementById('edit-webapp-name').value = currentWebApp.name;
+            document.getElementById('edit-webapp-description').value = currentWebApp.description || '';
+            
+            editTags = [...(currentWebApp.tags || [])];
+            renderEditTags();
+            
+            selectedNodes = [...(currentWebApp.nodeInfoList || [])];
+            
+            console.log('Current WebApp workflow type:', typeof currentWebApp.workflow);
+            console.log('Current WebApp workflow:', currentWebApp.workflow);
+            
+            try {
+                const response = await fetch('/api/webapp/extract-nodes', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workflow: currentWebApp.workflow })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                console.log('Response text length:', text.length);
+                console.log('Response text first 100 chars:', text.substring(0, 100));
+                
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('Invalid JSON response:', text.substring(0, 200));
+                    console.error('Response bytes:', new TextEncoder().encode(text.substring(0, 50)));
+                    throw new Error('服务器返回无效的JSON格式: ' + parseError.message);
+                }
+                
+                if (result.code === 0) {
+                    availableNodes = result.data;
+                    renderNodePanels();
+                } else {
+                    showToast('加载节点失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                console.error('Load nodes error:', error);
+                showToast('加载节点失败: ' + error.message, 'error');
+            }
+            
+            document.getElementById('edit-modal').classList.add('active');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+            currentWebApp = null;
+            availableNodes = [];
+            selectedNodes = [];
+        }
+        
+        function renderNodePanels() {
+            renderAvailableNodes();
+            renderSelectedNodes();
+        }
+        
+        function filterAvailableNodes() {
+            renderAvailableNodes();
+        }
+        
+        function renderAvailableNodes() {
+            const container = document.getElementById('available-nodes');
+            const searchTerm = document.getElementById('node-search').value.toLowerCase();
+            
+            const filtered = availableNodes.filter(node => {
+                const isSelected = selectedNodes.some(sn => 
+                    sn.nodeId === node.nodeId && sn.fieldName === node.fieldName
+                );
+                if (isSelected) return false;
+                
+                if (searchTerm) {
+                    const searchStr = `${node.nodeName} ${node.fieldName} ${node.description}`.toLowerCase();
+                    return searchStr.includes(searchTerm);
+                }
+                return true;
+            });
+            
+            document.getElementById('available-count').textContent = `${filtered.length} 个节点`;
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="color: #808080; text-align: center; padding: 20px;">无可选节点</p>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map((node, index) => `
+                <div class="available-node-item">
+                    <div class="node-info">
+                        <div class="node-info-name">${node.nodeName} <span style="color: #667eea; font-size: 12px;">[ID: ${node.nodeId}]</span></div>
+                        <div class="node-info-meta">
+                            ${node.fieldName} 
+                            <span class="badge badge-type">${node.fieldType}</span>
+                            ${node.description ? ` - ${node.description}` : ''}
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="addNode(${availableNodes.indexOf(node)})">添加</button>
+                </div>
+            `).join('');
+        }
+        
+        function renderSelectedNodes() {
+            const container = document.getElementById('selected-nodes');
+            document.getElementById('selected-count').textContent = `${selectedNodes.length} 个节点`;
+            
+            if (selectedNodes.length === 0) {
+                container.innerHTML = '<p style="color: #808080; text-align: center; padding: 20px;">请从左侧添加节点</p>';
+                return;
+            }
+            
+            container.innerHTML = selectedNodes.map((node, index) => `
+                <div class="selected-node-item">
+                    <div class="selected-node-header" onclick="toggleNodeBody(${index})">
+                        <span class="selected-node-title">${node.displayName || node.fieldName} <span style="color: #667eea; font-size: 12px;">[ID: ${node.nodeId}]</span></span>
+                        <div>
+                            <span class="badge badge-type">${node.fieldType}</span>
+                            <button class="btn btn-danger btn-sm" style="margin-left: 8px;" onclick="event.stopPropagation(); removeNode(${index})">移除</button>
+                        </div>
+                    </div>
+                    <div class="selected-node-body" id="node-body-${index}">
+                        <div class="field-row">
+                            <label>显示名称</label>
+                            <input type="text" class="form-control" value="${node.displayName || node.fieldName}" 
+                                onchange="updateNodeField(${index}, 'displayName', this.value)">
+                        </div>
+                        <div class="field-row">
+                            <label>描述</label>
+                            <input type="text" class="form-control" value="${node.description || ''}" 
+                                onchange="updateNodeField(${index}, 'description', this.value)">
+                        </div>
+                        <div class="field-row">
+                            <label>默认值</label>
+                            ${renderDefaultValueInput(node, index)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderDefaultValueInput(node, index) {
+            const inputId = `default-value-${index}`;
+            
+            switch (node.fieldType) {
+                case 'IMAGE':
+                case 'AUDIO':
+                case 'VIDEO':
+                    return `<input type="text" class="form-control" id="${inputId}" value="${node.fieldValue || ''}" 
+                        placeholder="文件名" onchange="updateNodeField(${index}, 'fieldValue', this.value)">`;
+                case 'INT':
+                    return `<input type="number" class="form-control" id="${inputId}" value="${node.fieldValue || 0}" 
+                        onchange="updateNodeField(${index}, 'fieldValue', parseInt(this.value))">`;
+                case 'FLOAT':
+                    return `<input type="number" step="0.01" class="form-control" id="${inputId}" value="${node.fieldValue || 0}" 
+                        onchange="updateNodeField(${index}, 'fieldValue', parseFloat(this.value))">`;
+                case 'BOOLEAN':
+                    return `
+                        <select class="form-control" onchange="updateNodeField(${index}, 'fieldValue', this.value === 'true')">
+                            <option value="true" ${node.fieldValue === true ? 'selected' : ''}>True</option>
+                            <option value="false" ${node.fieldValue === false ? 'selected' : ''}>False</option>
+                        </select>
+                    `;
+                case 'LIST':
+                    if (node.fieldData && node.fieldData.length > 0) {
+                        return `
+                            <select class="form-control" onchange="updateNodeField(${index}, 'fieldValue', this.value)">
+                                ${node.fieldData.map(opt => `
+                                    <option value="${opt}" ${node.fieldValue === opt ? 'selected' : ''}>${opt}</option>
+                                `).join('')}
+                            </select>
+                        `;
+                    }
+                    return `<input type="text" class="form-control" value="${node.fieldValue || ''}" 
+                        onchange="updateNodeField(${index}, 'fieldValue', this.value)">`;
+                default:
+                    return `<input type="text" class="form-control" value="${node.fieldValue || ''}" 
+                        onchange="updateNodeField(${index}, 'fieldValue', this.value)">`;
+            }
+        }
+        
+        function toggleNodeBody(index) {
+            const body = document.getElementById(`node-body-${index}`);
+            body.classList.toggle('expanded');
+        }
+        
+        function addNode(availableIndex) {
+            const node = availableNodes[availableIndex];
+            selectedNodes.push({...node, displayName: node.fieldName});
+            renderNodePanels();
+        }
+        
+        function removeNode(index) {
+            selectedNodes.splice(index, 1);
+            renderNodePanels();
+        }
+        
+        function updateNodeField(index, field, value) {
+            selectedNodes[index][field] = value;
+        }
+        
+        function handleWorkflowUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const workflow = JSON.parse(e.target.result);
+                    window.currentWorkflow = workflow;
+                    showToast('工作流加载成功', 'success');
+                } catch (error) {
+                    showToast('无效的 JSON 文件', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function handleTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const tag = input.value.trim();
+                if (tag && !tags.includes(tag)) {
+                    tags.push(tag);
+                    renderTags();
+                }
+                input.value = '';
+            }
+        }
+        
+        function renderTags() {
+            const container = document.getElementById('tags-input');
+            container.innerHTML = tags.map(tag => `
+                <span class="tag">
+                    ${tag}
+                    <button class="tag-remove" onclick="removeTag('${tag}')">&times;</button>
+                </span>
+            `).join('') + '<input type="text" class="tag-input" placeholder="输入标签后按回车" onkeydown="handleTagInput(event)">';
+        }
+        
+        function removeTag(tag) {
+            tags = tags.filter(t => t !== tag);
+            renderTags();
+        }
+        
+        function handleEditTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const tag = input.value.trim();
+                if (tag && !editTags.includes(tag)) {
+                    editTags.push(tag);
+                    renderEditTags();
+                }
+                input.value = '';
+            }
+        }
+        
+        function renderEditTags() {
+            const container = document.getElementById('edit-tags-input');
+            container.innerHTML = editTags.map(tag => `
+                <span class="tag">
+                    ${tag}
+                    <button class="tag-remove" onclick="removeEditTag('${tag}')">&times;</button>
+                </span>
+            `).join('') + '<input type="text" class="tag-input" placeholder="输入标签后按回车" onkeydown="handleEditTagInput(event)">';
+        }
+        
+        function removeEditTag(tag) {
+            editTags = editTags.filter(t => t !== tag);
+            renderEditTags();
+        }
+        
+        function selectRunMode(mode) {
+            document.querySelectorAll('.run-mode-option').forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.mode === mode);
+            });
+        }
+        
+        async function createWebApp() {
+            const name = document.getElementById('webapp-name').value.trim();
+            const description = document.getElementById('webapp-description').value.trim();
+            const runMode = document.querySelector('.run-mode-option.active')?.dataset.mode || '8g';
+            
+            if (!name) {
+                showToast('请输入应用名称', 'error');
+                return;
+            }
+            
+            if (!window.currentWorkflow) {
+                showToast('请上传工作流文件', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/webapp/create', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        description,
+                        workflow: window.currentWorkflow,
+                        tags,
+                        run_mode: runMode
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    showToast('创建成功', 'success');
+                    closeCreateModal();
+                    loadWebApps();
+                    
+                    currentWebApp = result.data;
+                    selectedNodes = [];
+                    
+                    try {
+                        const extractResponse = await fetch('/api/webapp/extract-nodes', {
+                            method: 'POST',
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ workflow: window.currentWorkflow })
+                        });
+                        
+                        if (extractResponse.ok) {
+                            const extractResult = await extractResponse.json();
+                            if (extractResult.code === 0) {
+                                availableNodes = extractResult.data;
+                            }
+                        }
+                    } catch (extractError) {
+                        console.error('Extract nodes error:', extractError);
+                    }
+                    
+                    document.getElementById('edit-webapp-name').value = currentWebApp.name;
+                    document.getElementById('edit-webapp-description').value = currentWebApp.description || '';
+                    editTags = [...(currentWebApp.tags || [])];
+                    renderEditTags();
+                    renderNodePanels();
+                    document.getElementById('edit-modal').classList.add('active');
+                } else {
+                    showToast('创建失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('创建失败: ' + error.message, 'error');
+            }
+        }
+        
+        async function saveWebApp(closeModal = true) {
+            if (!currentWebApp) return;
+            
+            const name = document.getElementById('edit-webapp-name').value.trim();
+            const description = document.getElementById('edit-webapp-description').value.trim();
+            
+            try {
+                const response = await fetch(`/api/webapp/${currentWebApp.id}`, {
+                    method: 'PUT',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        description,
+                        tags: editTags
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    await fetch(`/api/webapp/${currentWebApp.id}/nodes`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nodeInfoList: selectedNodes })
+                    });
+                    
+                    showToast('保存成功', 'success');
+                    if (closeModal) {
+                        closeEditModal();
+                    }
+                    loadWebApps();
+                } else {
+                    showToast('保存失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        async function publishWebApp() {
+            if (!currentWebApp) return;
+            
+            const webappId = currentWebApp.id;
+            
+            await saveWebApp(false);
+            
+            try {
+                const response = await fetch(`/api/webapp/${webappId}/publish`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    showToast('发布成功', 'success');
+                    closeEditModal();
+                    loadWebApps();
+                } else {
+                    showToast('发布失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('发布失败: ' + error.message, 'error');
+            }
+        }
+        
+        async function deleteWebApp(webappId) {
+            if (!confirm('确定要删除此 WebApp 吗？')) return;
+            
+            try {
+                const response = await fetch(`/api/webapp/${webappId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    showToast('删除成功', 'success');
+                    loadWebApps();
+                } else {
+                    showToast('删除失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('删除失败: ' + error.message, 'error');
+            }
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        let runWebApp = null;
+        let runParams = {};
+        
+        async function openRunModal(webappId) {
+            runWebApp = webapps.find(w => w.id === webappId);
+            if (!runWebApp) return;
+            
+            document.getElementById('run-webapp-name').textContent = runWebApp.name;
+            document.getElementById('run-webapp-description').textContent = runWebApp.description || '暂无描述';
+            
+            const nodeInfoList = runWebApp.nodeInfoList || [];
+            
+            if (nodeInfoList.length === 0) {
+                paramsContainer.innerHTML = '<p style="color: #808080; text-align: center; padding: 20px;">该应用没有配置参数</p>';
+            } else {
+                const inputFiles = await fetchInputFiles();
+                
+                nodeInfoList.forEach(node => {
+                    if (node.fieldType === 'LIST' && node.fieldName.toLowerCase().includes('image')) {
+                        node.fieldData = inputFiles;
+                    }
+                });
+                
+                const paramsContainer = document.getElementById('run-params-container');
+                paramsContainer.innerHTML = nodeInfoList.map((node, index) => `
+                    <div class="form-group">
+                        <label>${node.displayName || node.fieldName} <span style="color: #667eea; font-size: 12px;">[${node.nodeId}]</span></label>
+                        ${renderRunParamInput(node, index)}
+                        ${node.description ? `<small style="color: #808080;">${node.description}</small>` : ''}
+                    </div>
+                `).join('');
+            }
+            
+            runParams = {};
+            document.getElementById('run-modal').classList.add('active');
+        }
+        
+        function closeRunModal() {
+            document.getElementById('run-modal').classList.remove('active');
+            runWebApp = null;
+            runParams = {};
+            uploadedTempFiles = [];
+        }
+        
+        let uploadedTempFiles = [];
+        
+        function renderRunParamInput(node, index) {
+            const inputId = `run-param-${index}`;
+            
+            switch (node.fieldType) {
+                case 'IMAGE':
+                    return `
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" class="form-control" id="${inputId}" value="${node.fieldValue || ''}" 
+                                placeholder="图片文件名" onchange="updateRunParam(${index}, this.value, '${node.fieldType}')">
+                            <input type="file" id="file-${inputId}" accept="image/*" style="display: none;" 
+                                onchange="handleImageUpload(this, '${inputId}', ${index})">
+                            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-${inputId}').click()">上传</button>
+                        </div>
+                    `;
+                case 'INT':
+                    return `<input type="number" class="form-control" id="${inputId}" value="${node.fieldValue || 0}" 
+                        onchange="updateRunParam(${index}, parseInt(this.value), '${node.fieldType}')">`;
+                case 'FLOAT':
+                    return `<input type="number" step="0.01" class="form-control" id="${inputId}" value="${node.fieldValue || 0}" 
+                        onchange="updateRunParam(${index}, parseFloat(this.value), '${node.fieldType}')">`;
+                case 'BOOLEAN':
+                    return `
+                        <select class="form-control" onchange="updateRunParam(${index}, this.value === 'true', '${node.fieldType}')">
+                            <option value="true" ${node.fieldValue === true ? 'selected' : ''}>True</option>
+                            <option value="false" ${node.fieldValue === false ? 'selected' : ''}>False</option>
+                        </select>
+                    `;
+                case 'LIST':
+                    if (node.fieldData) {
+                        const isImageList = node.fieldName.toLowerCase().includes('image') || 
+                            (node.fieldData.length > 0 && node.fieldData.some(f => /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(f)));
+                        
+                        if (isImageList) {
+                            return `
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <select class="form-control" id="${inputId}" onchange="updateRunParam(${index}, this.value, '${node.fieldType}')" style="flex: 1;">
+                                        ${node.fieldData.length > 0 ? node.fieldData.map(opt => `
+                                            <option value="${opt}" ${node.fieldValue === opt ? 'selected' : ''}>${opt}</option>
+                                        `).join('') : '<option value="">暂无图片文件</option>'}
+                                    </select>
+                                    <input type="file" id="file-${inputId}" accept="image/*" style="display: none;" 
+                                        onchange="handleImageUpload(this, '${inputId}', ${index})">
+                                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-${inputId}').click()">上传</button>
+                                </div>
+                            `;
+                        }
+                        
+                        return `
+                            <select class="form-control" onchange="updateRunParam(${index}, this.value, '${node.fieldType}')">
+                                ${node.fieldData.map(opt => `
+                                    <option value="${opt}" ${node.fieldValue === opt ? 'selected' : ''}>${opt}</option>
+                                `).join('')}
+                            </select>
+                        `;
+                    }
+                    return `<input type="text" class="form-control" id="${inputId}" value="${node.fieldValue || ''}" 
+                        onchange="updateRunParam(${index}, this.value, '${node.fieldType}')">`;
+                default:
+                    return `<input type="text" class="form-control" id="${inputId}" value="${node.fieldValue || ''}" 
+                        onchange="updateRunParam(${index}, this.value, '${node.fieldType}')">`;
+            }
+        }
+        
+        function updateRunParam(index, value, fieldType) {
+            const node = runWebApp.nodeInfoList[index];
+            if (node) {
+                runParams[index] = {
+                    ...node,
+                    fieldValue: value
+                };
+            }
+        }
+        
+        async function handleImageUpload(fileInput, inputId, index) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileType', 'input');
+            
+            try {
+                const response = await fetch('/api/webapp/upload-temp', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    const inputElement = document.getElementById(inputId);
+                    if (inputElement.tagName === 'SELECT') {
+                        const option = document.createElement('option');
+                        option.value = result.data.filename;
+                        option.textContent = result.data.filename + ' (新上传)';
+                        inputElement.insertBefore(option, inputElement.firstChild);
+                        inputElement.value = result.data.filename;
+                    } else {
+                        inputElement.value = result.data.filename;
+                    }
+                    
+                    const node = runWebApp.nodeInfoList[index];
+                    runParams[index] = {
+                        ...node,
+                        fieldValue: result.data.filename,
+                        fileContent: result.data.fileContent,
+                        originalFilename: result.data.originalFilename
+                    };
+                    
+                    uploadedTempFiles.push(result.data.filename);
+                    showToast('图片上传成功', 'success');
+                } else {
+                    showToast('上传失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('上传失败: ' + error.message, 'error');
+            }
+            
+            fileInput.value = '';
+        }
+        
+        async function fetchInputFiles() {
+            try {
+                const response = await fetch('/api/webapp/input-files', {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                if (result.code === 0) {
+                    return result.data;
+                }
+            } catch (error) {
+                console.error('Error fetching input files:', error);
+            }
+            return [];
+        }
+        
+        async function executeWebApp() {
+            if (!runWebApp) return;
+            
+            const nodeInfoList = runWebApp.nodeInfoList || [];
+            const finalParams = nodeInfoList.map((node, index) => {
+                if (runParams[index]) {
+                    return runParams[index];
+                }
+                return node;
+            });
+            
+            try {
+                const response = await fetch('/api/webapp/run', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        webappId: runWebApp.id,
+                        nodeInfoList: finalParams,
+                        tempFiles: uploadedTempFiles
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    closeRunModal();
+                    window.location.href = `/webapp/tasks.html?taskId=${result.data.taskId}`;
+                } else {
+                    showToast('执行失败: ' + result.msg, 'error');
+                }
+            } catch (error) {
+                showToast('执行失败: ' + error.message, 'error');
+            }
+        }
+        
+        async function showResultModal(taskId) {
+            document.getElementById('result-status').innerHTML = `
+                <div style="text-align: center;">
+                    <div class="spinner" style="margin: 20px auto;"></div>
+                    <p>任务执行中...</p>
+                    <p style="color: #808080; font-size: 12px;">任务ID: ${taskId}</p>
+                </div>
+            `;
+            document.getElementById('result-outputs').innerHTML = '';
+            document.getElementById('result-modal').classList.add('active');
+            
+            await pollTaskStatus(taskId);
+        }
+        
+        async function pollTaskStatus(taskId) {
+            try {
+                const response = await fetch(`/api/webapp/task/${taskId}`, {
+                    headers: getAuthHeaders()
+                });
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    const task = result.data;
+                    
+                    if (task.status === 'pending' || task.status === 'running') {
+                        setTimeout(() => pollTaskStatus(taskId), 2000);
+                    } else if (task.status === 'completed') {
+                        document.getElementById('result-status').innerHTML = `
+                            <div style="text-align: center; color: #4caf50;">
+                                <span style="font-size: 48px;">✓</span>
+                                <p style="margin-top: 10px;">执行完成</p>
+                            </div>
+                        `;
+                        
+                        const outputsResponse = await fetch('/api/webapp/task/outputs', {
+                            method: 'POST',
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ taskId })
+                        });
+                        const outputsResult = await outputsResponse.json();
+                        
+                        if (outputsResult.code === 0 && outputsResult.data) {
+                            renderOutputs(outputsResult.data);
+                        }
+                    } else if (task.status === 'failed') {
+                        document.getElementById('result-status').innerHTML = `
+                            <div style="text-align: center; color: #f44336;">
+                                <span style="font-size: 48px;">✗</span>
+                                <p style="margin-top: 10px;">执行失败</p>
+                            </div>
+                        `;
+                        document.getElementById('result-outputs').innerHTML = `
+                            <p style="color: #f44336;">${task.failedReason || '未知错误'}</p>
+                        `;
+                    }
+                }
+            } catch (error) {
+                document.getElementById('result-status').innerHTML = `
+                    <div style="text-align: center; color: #f44336;">
+                        <span style="font-size: 48px;">✗</span>
+                        <p style="margin-top: 10px;">查询状态失败</p>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderOutputs(outputs) {
+            const container = document.getElementById('result-outputs');
+            
+            if (!outputs || outputs.length === 0) {
+                container.innerHTML = '<p style="color: #808080;">无输出结果</p>';
+                return;
+            }
+            
+            container.innerHTML = outputs.map((output, index) => {
+                if (output.type === 'image' && output.url) {
+                    return `
+                        <div style="margin-bottom: 16px;">
+                            <img src="${output.url}" style="max-width: 100%; border-radius: 8px;">
+                        </div>
+                    `;
+                }
+                return `<div style="margin-bottom: 16px;"><pre>${JSON.stringify(output, null, 2)}</pre></div>`;
+            }).join('');
+        }
+        
+        function closeResultModal() {
+            document.getElementById('result-modal').classList.remove('active');
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadWebApps);
+        
+        document.addEventListener('paste', (e) => {
+            const createModal = document.getElementById('create-modal');
+            if (createModal.classList.contains('active')) {
+                const text = e.clipboardData.getData('text');
+                try {
+                    const workflow = JSON.parse(text);
+                    window.currentWorkflow = workflow;
+                    showToast('工作流已从剪贴板粘贴', 'success');
+                } catch (error) {
+                }
+            }
+        });
+    </script>
+</body>
+</html>
