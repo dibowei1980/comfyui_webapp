@@ -184,6 +184,108 @@ async def get_input_files(request):
         }, status=500)
 
 
+@routes.get("/api/webapp/input/{filename:.*}")
+async def get_input_file(request):
+    try:
+        filename = request.match_info.get("filename")
+        user_id = get_user_id(request)
+        
+        if not filename:
+            return web.json_response({
+                "code": 400,
+                "msg": "Filename is required"
+            }, status=400)
+        
+        with user_dir_manager.user_context(user_id):
+            input_dir = folder_paths.get_input_directory()
+            filepath = os.path.join(input_dir, filename)
+            
+            if not os.path.exists(filepath) or not os.path.isfile(filepath):
+                return web.json_response({
+                    "code": 404,
+                    "msg": f"File not found: {filename}"
+                }, status=404)
+            
+            real_path = os.path.realpath(filepath)
+            real_input_dir = os.path.realpath(input_dir)
+            if not real_path.startswith(real_input_dir):
+                return web.json_response({
+                    "code": 403,
+                    "msg": "Access denied"
+                }, status=403)
+        
+        with open(filepath, "rb") as f:
+            content = f.read()
+        
+        content_type, _ = mimetypes.guess_type(filename)
+        if not content_type:
+            content_type = "application/octet-stream"
+        
+        return web.Response(
+            body=content,
+            content_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{os.path.basename(filename)}"'
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error getting input file: {e}")
+        return web.json_response({
+            "code": 500,
+            "msg": str(e)
+        }, status=500)
+
+
+@routes.get("/api/webapp/models/{filename:.*}")
+async def get_models_file(request):
+    try:
+        filename = request.match_info.get("filename")
+        
+        if not filename:
+            return web.json_response({
+                "code": 400,
+                "msg": "Filename is required"
+            }, status=400)
+        
+        models_dir = folder_paths.models_dir
+        filepath = os.path.join(models_dir, filename)
+        
+        if not os.path.exists(filepath) or not os.path.isfile(filepath):
+            return web.json_response({
+                "code": 404,
+                "msg": f"File not found: {filename}"
+            }, status=404)
+        
+        real_path = os.path.realpath(filepath)
+        real_models_dir = os.path.realpath(models_dir)
+        if not real_path.startswith(real_models_dir):
+            return web.json_response({
+                "code": 403,
+                "msg": "Access denied"
+            }, status=403)
+        
+        with open(filepath, "rb") as f:
+            content = f.read()
+        
+        content_type, _ = mimetypes.guess_type(filename)
+        if not content_type:
+            content_type = "application/octet-stream"
+        
+        return web.Response(
+            body=content,
+            content_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{os.path.basename(filename)}"'
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error getting models file: {e}")
+        return web.json_response({
+            "code": 500,
+            "msg": str(e)
+        }, status=500)
+
+
 @routes.post("/api/webapp/upload-temp")
 async def upload_temp_file(request):
     try:
@@ -506,8 +608,10 @@ async def run_webapp(request):
         api_key = data.get("apiKey")
         temp_files = data.get("tempFiles", [])
         user_id = get_user_id(request)
+        skip_file_content_restore = data.get("skipFileContentRestore", False)
+        client_id = data.get("clientId")
         
-        task = await webapp_manager.submit_task(webapp_id, node_info_list, api_key, temp_files, user_id=user_id)
+        task = await webapp_manager.submit_task(webapp_id, node_info_list, api_key, temp_files, user_id=user_id, skip_file_content_restore=skip_file_content_restore, client_id=client_id)
         
         if task.error:
             return web.json_response({

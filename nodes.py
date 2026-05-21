@@ -478,9 +478,8 @@ class InpaintModelConditioning:
 class SaveLatent:
     SEARCH_ALIASES = ["export latent"]
 
-    @property
-    def output_dir(self):
-        return folder_paths.get_output_directory()
+    def __init__(self):
+        self.output_dir = folder_paths.get_output_directory()
 
     @classmethod
     def INPUT_TYPES(s):
@@ -1629,13 +1628,10 @@ class KSamplerAdvanced:
 
 class SaveImage:
     def __init__(self):
+        self.output_dir = folder_paths.get_output_directory()
         self.type = "output"
         self.prefix_append = ""
         self.compress_level = 4
-
-    @property
-    def output_dir(self):
-        return folder_paths.get_output_directory()
 
     @classmethod
     def INPUT_TYPES(s):

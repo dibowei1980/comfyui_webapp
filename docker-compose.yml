@@ -14,11 +14,13 @@ services:
       - ${COMFYUI_MODELS:-./models}:/app/models
       - ${COMFYUI_INPUT:-./input}:/app/input
       - ${COMFYUI_OUTPUT:-./output}:/app/output
+      - ${COMFYUI_TEMP:-./temp}:/app/temp
       - ${COMFYUI_CUSTOM_NODES:-./custom_nodes}:/app/custom_nodes
       - ${COMFYUI_USER:-./user}:/app/user
       - ${COMFYUI_APP:-./app}:/app/app
       - ${COMFYUI_WEB:-./web}:/app/web
       - ${COMFYUI_SERVER:-./server.py}:/app/server.py
+      - ${COMFYUI_NODES:-./nodes.py}:/app/nodes.py
     environment:
       - CUDA_VISIBLE_DEVICES=0
       - PYTHONUNBUFFERED=1

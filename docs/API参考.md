@@ -398,6 +398,8 @@ POST /api/webapp/run
 | nodeInfoList | array | 否 | 用户填写的参数列表 |
 | apiKey | string | 否 | 当前接口接收但后端逻辑未使用 |
 | tempFiles | array | 否 | 临时文件名列表 |
+| skipFileContentRestore | boolean | 否 | 跳过从 input 目录读取文件内容到 fileContent，默认 false |
+| clientId | string | 否 | 客户端标识，用于 WebSocket 消息推送，默认 `webapp_{taskId}` |
 
 **成功响应**
 
@@ -597,7 +599,75 @@ GET /api/webapp/input-files
 
 当前接口只返回文件名数组，不返回大小、类型、URL 等扩展信息。
 
-### 6.2 上传临时文件
+### 6.2 获取 input 目录文件
+
+**请求**
+
+```http
+GET /api/webapp/input/{filename}
+```
+
+**路径参数**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| filename | string | 文件名，支持子目录路径（如 `subdir/image.png`） |
+
+**成功响应**
+
+返回文件二进制内容，Content-Type 根据文件扩展名自动判断。
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 400 | 400 | 文件名参数缺失 |
+| 403 | 403 | 访问被拒绝（路径遍历攻击） |
+| 404 | 404 | 文件不存在 |
+| 500 | 500 | 服务器错误 |
+
+**示例**
+
+```bash
+curl -O http://localhost:8188/api/webapp/input/my_image.png
+curl -O http://localhost:8188/api/webapp/input/subdir/another.png
+```
+
+### 6.3 获取 models 目录文件
+
+**请求**
+
+```http
+GET /api/webapp/models/{filename}
+```
+
+**路径参数**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| filename | string | 文件名，支持子目录路径（如 `checkpoints/model.safetensors`） |
+
+**成功响应**
+
+返回文件二进制内容，Content-Type 根据文件扩展名自动判断。
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 400 | 400 | 文件名参数缺失 |
+| 403 | 403 | 访问被拒绝（路径遍历攻击） |
+| 404 | 404 | 文件不存在 |
+| 500 | 500 | 服务器错误 |
+
+**示例**
+
+```bash
+curl -O http://localhost:8188/api/webapp/models/checkpoints/v1-5-pruned.safetensors
+curl -O http://localhost:8188/api/webapp/models/loras/style_lora.safetensors
+```
+
+### 6.4 上传临时文件
 
 **请求**
 
@@ -628,7 +698,7 @@ Content-Type: multipart/form-data
 }
 ```
 
-### 6.3 删除临时文件
+### 6.5 删除临时文件
 
 **请求**
 
@@ -648,7 +718,7 @@ POST /api/webapp/delete-temp
 
 当前接口参数名是 `filenames`，不是 `filename`。
 
-### 6.4 恢复文件
+### 6.6 恢复文件
 
 **请求**
 
@@ -669,7 +739,7 @@ POST /api/webapp/restore-file
 
 接口会根据文件内容计算 MD5，并把文件恢复到当前用户 input 目录。
 
-### 6.5 通用上传接口
+### 6.7 通用上传接口
 
 **请求**
 
@@ -760,9 +830,71 @@ interface OutputFile {
 }
 ```
 
-## 8. 典型错误
+## 8. WebSocket 事件
 
-### 8.1 HTTP 错误
+### 8.1 webapp_task_done
+
+**说明**
+
+当 webapp 任务完成（成功或失败）后，系统通过 WebSocket 广播此事件。**此事件在数据整理和文件清理完毕后才发出**，外部应用应监听此事件而非原生的 `execution_success`。
+
+原生 `execution_success` 是 ComfyUI 引擎执行完即广播的，此时 webapp 层尚未完成输出文件移动和临时文件清理，直接取数据会不完整。
+
+**事件格式**
+
+```json
+{
+  "type": "webapp_task_done",
+  "data": {
+    "taskId": "e8474edb-7736-4a55-8bf5-517017904904",
+    "status": "completed",
+    "userId": "default",
+    "task": { }
+  }
+}
+```
+
+**data 字段说明**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| taskId | string | 任务 ID |
+| status | string | `"completed"` 或 `"failed"` |
+| userId | string | 用户 ID |
+| task | TaskResult | 完整的任务数据，包含 `outputFiles`、`outputs` 等 |
+
+**监听示例**
+
+```javascript
+const ws = new WebSocket("ws://localhost:8188/ws");
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  if (msg.type === "webapp_task_done") {
+    const { taskId, status, task } = msg.data;
+    if (status === "completed") {
+      // outputFiles 已就绪，可安全下载
+      task.outputFiles.forEach(file => {
+        console.log(file.url); // /api/webapp/task/{taskId}/download/{filename}
+      });
+    } else if (status === "failed") {
+      console.error(task.error);
+    }
+  }
+};
+```
+
+**触发场景**
+
+| 场景 | status | 说明 |
+|------|--------|------|
+| 任务执行成功 | `completed` | 输出文件已移动到 task 输出目录，临时文件已清理 |
+| 任务执行失败 | `failed` | 错误信息已写入 task.error |
+| 任务从队列丢失 | `failed` | 服务器可能重启，error 为 "Task lost from queue" |
+| 任务超时 | `failed` | 超过 600 秒未完成，error 为 "Task timeout" |
+
+## 9. 典型错误
+
+### 9.1 HTTP 错误
 
 | HTTP 状态 | 场景 |
 |-----------|------|
@@ -770,7 +902,7 @@ interface OutputFile {
 | 404 | WebApp、任务或文件不存在 |
 | 500 | 提取节点、读写文件或任务处理异常 |
 
-### 8.2 业务错误码
+### 9.2 业务错误码
 
 | code | 场景 |
 |------|------|
@@ -779,9 +911,9 @@ interface OutputFile {
 | 805 | 任务失败 |
 | 813 | 任务待处理 |
 
-## 9. 调用示例
+## 10. 调用示例
 
-### 9.1 创建并发布 WebApp
+### 10.1 创建并发布 WebApp
 
 ```bash
 curl -X POST http://localhost:8188/api/webapp/create ^
@@ -795,7 +927,7 @@ curl -X POST http://localhost:8188/api/webapp/{webapp_id}/publish ^
   -H "X-User-ID: user123"
 ```
 
-### 9.2 提交任务并查询结果
+### 10.2 提交任务并查询结果
 
 ```bash
 curl -X POST http://localhost:8188/api/webapp/run ^
@@ -815,7 +947,7 @@ curl http://localhost:8188/api/webapp/task/{task_id}/download-all ^
   -o outputs.zip
 ```
 
-## 10. 文档同步结论
+## 11. 文档同步结论
 
 本文件已根据当前仓库实现更新，重点修正了以下差异：
 
@@ -823,3 +955,4 @@ curl http://localhost:8188/api/webapp/task/{task_id}/download-all ^
 - 移除了仓库中未实现的 API Key 认证、批量删除任务、取消发布和 WebSocket 文档
 - 补充了 `/extract-nodes`、`/task/outputs`、`/download-all` 等实际存在接口
 - 修正了输入文件列表、删除临时文件、任务列表分页和任务状态码说明
+- 新增 WebSocket 事件 `webapp_task_done`，确保外部应用在数据就绪后才收到完成通知

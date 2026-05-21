@@ -190,7 +190,7 @@ class WebAppManager:
             return None
         return webapp.nodeInfoList
 
-    async def submit_task(self, webapp_id: str, node_info_list: List[Dict[str, Any]], api_key: Optional[str] = None, temp_files: List[str] = None, parent_task_id: str = None, user_id: str = "default") -> TaskResult:
+    async def submit_task(self, webapp_id: str, node_info_list: List[Dict[str, Any]], api_key: Optional[str] = None, temp_files: List[str] = None, parent_task_id: str = None, user_id: str = "default", skip_file_content_restore: bool = False, client_id: str = None) -> TaskResult:
         webapp = self.get_webapp(webapp_id, user_id)
         if not webapp:
             return TaskResult(
@@ -233,29 +233,21 @@ class WebAppManager:
                     except Exception as e:
                         logging.error(f"Error restoring file content: {e}")
                 elif field_type in ("IMAGE", "LIST") and field_value:
-                    existing_file = os.path.join(upload_dir, str(field_value))
-                    if os.path.exists(existing_file):
-                        try:
-                            with open(existing_file, "rb") as f:
-                                file_data = f.read()
-                            node_info["fileContent"] = base64.b64encode(file_data).decode("utf-8")
-                            node_info["originalFilename"] = str(field_value)
-                            logging.info(f"Saved file content for: {field_value}")
-                        except Exception as e:
-                            logging.error(f"Error reading file content: {e}")
+                    if not skip_file_content_restore:
+                        existing_file = os.path.join(upload_dir, str(field_value))
+                        if os.path.exists(existing_file):
+                            try:
+                                with open(existing_file, "rb") as f:
+                                    file_data = f.read()
+                                node_info["fileContent"] = base64.b64encode(file_data).decode("utf-8")
+                                node_info["originalFilename"] = str(field_value)
+                                logging.info(f"Saved file content for: {field_value}")
+                            except Exception as e:
+                                logging.error(f"Error reading file content: {e}")
         
         updated_fields = [NodeField.from_dict(n) for n in node_info_list]
         modified_workflow = node_mapper.apply_field_changes(webapp.workflow, updated_fields)
         api_prompt = node_mapper.workflow_to_api_format(modified_workflow)
-        debug_dir = self._get_user_tasks_path(user_id)
-        os.makedirs(debug_dir, exist_ok=True)
-        debug_file = os.path.join(debug_dir, f"debug_prompt_{task_id}.json")
-        try:
-            with open(debug_file, "w", encoding="utf-8") as f:
-                json.dump(api_prompt, f, indent=2, ensure_ascii=False)
-            logging.info(f"Debug prompt saved to: {debug_file}")
-        except Exception as e:
-            logging.warning(f"Failed to save debug prompt: {e}")
 
         retry_count = 0
         if parent_task_id and parent_task_id in self.tasks:
@@ -288,7 +280,7 @@ class WebAppManager:
                 number = float(1)
                 
                 extra_data = {
-                    "client_id": f"webapp_{task_id}",
+                    "client_id": client_id or f"webapp_{task_id}",
                     "create_time": int(time.time() * 1000),
                     "user_id": user_id
                 }
@@ -370,6 +362,7 @@ class WebAppManager:
                                 task.outputFiles = self._copy_output_files(task_id, outputs, user_id)
                                 self._save_task(task, user_id)
                             self._cleanup_temp_files(temp_files, user_id)
+                            self._notify_task_done(task_id, "completed", user_id)
                             return
                         elif status_str == "error":
                             task = self.get_task(task_id, user_id)
@@ -405,6 +398,7 @@ class WebAppManager:
                                     task.error = "Execution failed"
                                 self._save_task(task, user_id)
                             self._cleanup_temp_files(temp_files, user_id)
+                            self._notify_task_done(task_id, "failed", user_id)
                             return
                 else:
                     if elapsed < initial_grace_period:
@@ -438,6 +432,7 @@ class WebAppManager:
                             task.completed_at = beijing_now()
                             self._save_task(task, user_id)
                         self._cleanup_temp_files(temp_files, user_id)
+                        self._notify_task_done(task_id, "failed", user_id)
                         return
         
         task = self.get_task(task_id, user_id)
@@ -447,10 +442,24 @@ class WebAppManager:
             task.completed_at = beijing_now()
             self._save_task(task, user_id)
         self._cleanup_temp_files(temp_files, user_id)
+        self._notify_task_done(task_id, "failed", user_id)
+
+    def _notify_task_done(self, task_id: str, status: str, user_id: str = "default"):
+        if _server_instance is None:
+            return
+        task = self.get_task(task_id, user_id)
+        task_data = task.to_dict() if task else {"taskId": task_id, "status": status}
+        _server_instance.send_sync("webapp_task_done", {
+            "taskId": task_id,
+            "status": status,
+            "userId": user_id,
+            "task": task_data
+        })
 
     def _copy_output_files(self, task_id: str, outputs: Dict, user_id: str = "default") -> List[Dict]:
         result = []
         output_dir = self._get_task_output_dir(task_id, user_id)
+        logging.info(f"Copying output files to: {output_dir}")
         timestamp_uid = beijing_now().strftime("%Y%m%d_%H%M%S_") + str(uuid.uuid4())[:8]
         
         with user_dir_manager.user_context(user_id):
@@ -476,7 +485,8 @@ class WebAppManager:
                                 
                                 try:
                                     if os.path.exists(src_path):
-                                        shutil.copy2(src_path, dst_path)
+                                        shutil.move(src_path, dst_path)
+                                        
                                         result.append({
                                             "originalFilename": original_filename,
                                             "savedFilename": new_filename,
