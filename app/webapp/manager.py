@@ -34,6 +34,50 @@ def get_prompt_queue():
     return _prompt_queue
 
 
+def _format_prompt_validation_error(error_info: Optional[Dict[str, Any]], node_errors: Dict[str, Any], failed_outputs: Optional[List[str]] = None) -> str:
+    error_parts = []
+    failed_output_set = set(failed_outputs or [])
+
+    if isinstance(error_info, dict):
+        error_type = error_info.get('type', 'error')
+        message = error_info.get('message', '')
+        if error_type or message:
+            error_parts.append(f"{error_type}: {message}".strip())
+        if error_info.get('details'):
+            error_parts.append(error_info['details'])
+    elif error_info:
+        error_parts.append(str(error_info))
+
+    grouped_errors = {output_id: [] for output_id in failed_output_set}
+    ungrouped_errors = []
+    for node_id, node_error in node_errors.items():
+        dependent_outputs = [str(output_id) for output_id in node_error.get('dependent_outputs', [])]
+        matching_outputs = [output_id for output_id in dependent_outputs if output_id in failed_output_set]
+        targets = matching_outputs if matching_outputs else [None]
+        class_type = node_error.get('class_type', 'Unknown')
+        errors = node_error.get('errors', [])
+        for err in errors:
+            err_msg = err.get('message', '')
+            err_details = err.get('details', '')
+            formatted_error = f"* {class_type} {node_id}:\n  - {err_msg}: {err_details}".rstrip()
+            if targets == [None]:
+                ungrouped_errors.append(formatted_error)
+            else:
+                for output_id in targets:
+                    grouped_errors.setdefault(output_id, []).append(formatted_error)
+
+    for output_id in failed_outputs or []:
+        error_parts.append(f"Failed to validate prompt for output {output_id}:")
+        output_errors = grouped_errors.get(output_id, [])
+        if output_errors:
+            error_parts.extend(output_errors)
+        else:
+            error_parts.append("Output node validation failed")
+
+    error_parts.extend(ungrouped_errors)
+    return "\n".join(error_parts) if error_parts else "Prompt validation failed"
+
+
 class WebAppManager:
     def __init__(self):
         self.webapps: Dict[str, WebApp] = {}
@@ -286,36 +330,38 @@ class WebAppManager:
                 }
                 
                 valid = await execution.validate_prompt(prompt_id, api_prompt, None)
+                logging.info(f"WebApp debug: api_prompt_nodes={len(api_prompt)} node_ids={list(api_prompt.keys())} valid={valid[0]} outputs_to_execute={valid[2] if len(valid) > 2 else None}")
+
+                import nodes as _nodes
+                expected_outputs = set()
+                for _nid, _ndata in api_prompt.items():
+                    _ctype = _ndata.get("class_type", "")
+                    _cls = _nodes.NODE_CLASS_MAPPINGS.get(_ctype)
+                    if _cls and hasattr(_cls, 'OUTPUT_NODE') and _cls.OUTPUT_NODE is True:
+                        expected_outputs.add(str(_nid))
+
+                node_errors = valid[3] if len(valid) > 3 else {}
                 if not valid[0]:
                     error_info = valid[1] if valid[1] else {"message": "Prompt validation failed"}
-                    node_errors = valid[3] if len(valid) > 3 else {}
-                    
-                    error_parts = []
-                    if isinstance(error_info, dict):
-                        error_parts.append(f"{error_info.get('type', 'error')}: {error_info.get('message', '')}")
-                        if error_info.get('details'):
-                            error_parts.append(error_info['details'])
-                    
-                    if node_errors:
-                        for node_id, node_error in node_errors.items():
-                            class_type = node_error.get('class_type', 'Unknown')
-                            errors = node_error.get('errors', [])
-                            for err in errors:
-                                err_msg = err.get('message', '')
-                                err_details = err.get('details', '')
-                                error_parts.append(f"* {class_type} {node_id}:")
-                                error_parts.append(f"  - {err_msg}: {err_details}")
-                    
-                    full_error = "\n".join(error_parts) if error_parts else str(error_info)
+                    full_error = _format_prompt_validation_error(error_info, node_errors, sorted(expected_outputs))
                     logging.error(f"Prompt validation failed: {full_error}")
                     task.status = "failed"
                     task.error = full_error
                     self._save_task(task, user_id)
                     return task
                 
-                outputs_to_execute = valid[2]
-                
-                _prompt_queue.put((number, prompt_id, api_prompt, extra_data, outputs_to_execute, {}))
+                outputs_to_execute = [str(output_id) for output_id in valid[2]]
+
+                _failed_outputs = expected_outputs - set(outputs_to_execute)
+                if _failed_outputs:
+                    _error_msg = _format_prompt_validation_error(None, node_errors, sorted(_failed_outputs))
+                    task.status = "failed"
+                    task.error = _error_msg
+                    self._save_task(task, user_id)
+                    logging.error(f"WebApp task {task_id} failed: output node validation failed: {_error_msg}")
+                    return task
+                else:
+                    _prompt_queue.put((number, prompt_id, api_prompt, extra_data, outputs_to_execute, {}))
                 task.status = "running"
                 task.started_at = beijing_now()
                 self._save_task(task, user_id)
